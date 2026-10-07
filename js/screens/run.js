@@ -1,7 +1,7 @@
 import { t, dateFmt, num } from '../i18n.js';
 import { icon } from '../icons.js';
 import { go, toast, esc, logHeader, stepperHtml, wireSteppers, parseNum, fieldError } from '../ui.js';
-import { today, iso, fromIso, getSettings, getWeek, getRunOn, getRuns, saveRun } from '../store.js';
+import { activeDate, iso, fromIso, getWeek, getRunOn, getRuns, saveRun } from '../store.js';
 
 const DIST_STEP = 0.5;
 
@@ -12,19 +12,20 @@ export function paceText(distanceKm, durationMin) {
 }
 
 export async function renderRun(el) {
-  const now = today();
+  const now = activeDate();
   const date = iso(now);
-  const [settings, week, existing, runs] = await Promise.all([getSettings(), getWeek(now), getRunOn(date), getRuns()]);
+  const [week, existing, runs] = await Promise.all([getWeek(now), getRunOn(date), getRuns()]);
   const prev = [...runs].reverse().find((r) => r.date < date);
   const weekOther = week.filter((d) => d.iso !== date).reduce((s, d) => s + d.runKm, 0);
-  const goal = settings.runGoalKm;
-  const start = existing || { distanceKm: settings.runPerSessionKm, durationMin: null, speedKmh: null, incline: null, note: '' };
+  const goal = week.goal.runGoalKm;
+  const target = week.find((d) => d.iso === date).runTargetKm;
+  const start = existing || { distanceKm: target ? Math.round(target * 10) / 10 : 3, durationMin: null, speedKmh: null, incline: null, note: '' };
   const mins = start.durationMin ? Math.floor(start.durationMin) : '';
   const secs = start.durationMin ? Math.round((start.durationMin % 1) * 60) : '';
 
   el.innerHTML = `
   <form class="screen log run" novalidate>
-    ${logHeader({ t, dateLabel: dateFmt.long(now), title: t('run.title'), active: 'run' })}
+    ${logHeader({ t, date, dateLabel: dateFmt.long(now), title: t('run.title'), active: 'run' })}
 
     <section class="card current textured glow-run" aria-label="${t('run.title')}">
       ${stepperHtml({ id: 'dist', label: t('run.distance'), value: num(start.distanceKm, 2), unit: t('run.km'), decLabel: t('run.decDist', { step: num(DIST_STEP) }), incLabel: t('run.incDist', { step: num(DIST_STEP) }) })}

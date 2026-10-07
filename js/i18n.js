@@ -38,6 +38,7 @@ export const dateFmt = {
   long: (d) => fmt({ weekday: 'long', day: 'numeric', month: 'long' }).format(d),
   short: (d) => fmt({ day: 'numeric', month: 'short' }).format(d),
   weekday: (d) => fmt({ weekday: 'long' }).format(d),
+  weekdayShort: (d) => fmt({ weekday: 'short' }).format(d),
   weekdayNarrow: (d) => fmt({ weekday: 'narrow' }).format(d),
   day: (d) => fmt({ day: 'numeric' }).format(d),
 };

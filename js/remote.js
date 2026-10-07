@@ -65,21 +65,33 @@ export function flush() {
   flushing = (async () => {
     let q = read(QUEUE, []);
     notify({ state: 'syncing', pending: q.length });
+    const kept = [];
+    let lastError = null;
     while (q.length) {
+      const item = q[0];
       try {
-        await post(q[0].action, q[0].payload, conn);
+        await post(item.action, item.payload, conn);
       } catch (err) {
-        notify({ state: 'error', pending: q.length, error: String(err.message || err) });
-        // Every write is safe to send twice (see backend/Code.gs), so just try again later.
-        clearTimeout(retryTimer);
-        retryTimer = setTimeout(() => flush(), RETRY_MS);
-        return { ok: false, pending: q.length };
+        lastError = String(err.message || err);
+        // No connection: stop and retry later. Every write is safe to send twice.
+        if (/^(timeout|offline|http_)/.test(lastError)) {
+          write(QUEUE, kept.concat(read(QUEUE, [])));
+          notify({ state: 'error', pending: pendingCount(), error: lastError });
+          clearTimeout(retryTimer);
+          retryTimer = setTimeout(() => flush(), RETRY_MS);
+          return { ok: false, pending: pendingCount() };
+        }
+        // The sheet refused this one (for example an older script that does not know
+        // the action yet): keep it for later, but do not hold up the writes behind it.
+        kept.push(item);
       }
       q = read(QUEUE, []).slice(1);
       write(QUEUE, q);
     }
-    notify({ state: 'synced', pending: 0 });
-    return { ok: true, pending: 0 };
+    write(QUEUE, kept.concat(read(QUEUE, [])));
+    const pending = pendingCount();
+    notify(pending ? { state: 'error', pending, error: lastError } : { state: 'synced', pending: 0 });
+    return { ok: !pending, pending };
   })().finally(() => { flushing = null; });
   return flushing;
 }

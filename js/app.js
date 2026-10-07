@@ -7,6 +7,7 @@ import { renderBody } from './screens/body.js';
 import { renderAnalytics } from './screens/analytics.js';
 import { renderMachines } from './screens/machines.js';
 import { renderSettings } from './screens/settings.js';
+import { renderPlan } from './screens/plan.js';
 import { init } from './store.js';
 import { toast } from './ui.js';
 
@@ -21,6 +22,7 @@ const SUB = {
   '/log/run': { key: 'log', render: renderRun },
   '/log/body': { key: 'log', render: renderBody },
   '/settings': { key: 'home', render: renderSettings },
+  '/plan': { key: 'home', render: renderPlan },
 };
 
 const main = document.getElementById('main');
@@ -33,7 +35,7 @@ function renderNav(active) {
 }
 
 async function route() {
-  const path = location.hash.replace(/^#/, '') || '/';
+  const path = location.hash.replace(/^#/, '').split('?')[0] || '/';
   const r = ROUTES[path] || SUB[path] || ROUTES['/'];
   renderNav(r.key);
   main.setAttribute('aria-busy', 'true');
@@ -50,7 +52,7 @@ if (boot.mode === 'sheets' && !boot.fresh && !boot.cached) toast(t('settings.loa
 // screens, but never under someone who is mid-entry on a log screen.
 window.addEventListener('phealth:data', (e) => {
   if (!e.detail.ok) { toast(t('settings.loadError')); return; }
-  const path = location.hash.replace(/^#/, '') || '/';
+  const path = location.hash.replace(/^#/, '').split('?')[0] || '/';
   if (['/', '/analytics', '/machines'].includes(path)) route();
 });
 document.title = t('app.name');

@@ -2,17 +2,18 @@ import { t, tc, has, dateFmt, num } from '../i18n.js';
 import { icon } from '../icons.js';
 import { go, toast, esc, logHeader } from '../ui.js';
 import {
-  today, iso, addDays, fromIso, SCHEDULE, getSettings, getMachines, getLastSession, getDraft, saveDraft,
+  activeDate, iso, addDays, fromIso, planFor, getWeek, getSettings, getMachines, getLastSession, getDraft, saveDraft,
   saveWorkout, addMachine, getWorkoutEntries,
 } from '../store.js';
 
 let S; // screen state: { draft, settings, machines, last: Map, root, error }
 
+// The day's own plan decides Upper or Lower; on a rest or run-only day, the next weights day.
 function guessType(now) {
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 14; i++) {
     const d = addDays(now, i);
-    const plan = SCHEDULE[d.getDay()];
-    if (plan !== 'rest') return { type: plan, forDay: d };
+    const w = planFor(iso(d)).weights;
+    if (w) return { type: w, forDay: d };
   }
   return { type: 'upper', forDay: now };
 }
@@ -98,7 +99,7 @@ function render() {
 
   S.root.innerHTML = `
   <div class="screen log">
-    ${logHeader({ t, dateLabel: dateFmt.long(fromIso(d.date)), title: t('log.title'), active: 'weights' })}
+    ${logHeader({ t, date: d.date, dateLabel: dateFmt.long(fromIso(d.date)), title: t('log.title'), active: 'weights' })}
 
     <div class="segmented" role="radiogroup" aria-label="${t('log.typeLabel')}">
       ${['upper', 'lower'].map((ty) => `<button role="radio" class="seg seg-${ty}" data-act="type" data-type="${ty}" data-fid="type-${ty}" aria-checked="${d.type === ty}" tabindex="${d.type === ty ? 0 : -1}"><span class="dot dot-${ty}" aria-hidden="true"></span>${t(`category.${ty}`)}</button>`).join('')}
@@ -263,7 +264,10 @@ async function finish() {
   if (!done.length) { S.error = t('log.finishEmpty'); render(); return; }
   const machines = d.entries.filter((e) => e.sets.some((s) => s.done)).length;
   const res = await saveWorkout(d);
-  let msg = t('log.saved', { machines: tc('home.machines', machines), sets: tc('home.sets', res.sets), km: S.settings.runPerSessionKm });
+  const day = (await getWeek(fromIso(d.date))).find((x) => x.iso === d.date);
+  let msg = day.plan.run && !day.runKm
+    ? t('log.saved', { machines: tc('home.machines', machines), sets: tc('home.sets', res.sets), km: num(day.runTargetKm) })
+    : t('log.savedNoRun', { machines: tc('home.machines', machines), sets: tc('home.sets', res.sets) });
   const pr = res.prs[0];
   if (pr) msg = t('log.savedWithPr', { name: machine(pr.machineId).name, kg: fmtKg(pr.kg), saved: msg });
   toast(msg, pr ? 'pr' : 'info');
@@ -318,7 +322,7 @@ async function onSubmit(ev) {
 }
 
 export async function renderLog(el) {
-  const now = today();
+  const now = activeDate();
   const date = iso(now);
   const [settings, machines] = await Promise.all([getSettings(), getMachines()]);
   const last = new Map(await Promise.all(machines.map(async (m) => [m.id, await getLastSession(m.id, date)])));

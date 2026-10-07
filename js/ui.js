@@ -19,13 +19,16 @@ export function toast(message, kind = 'info') {
 }
 
 // Header + Weights/Run/Body tabs shared by the three log screens.
-export function logHeader({ t, dateLabel, title, active }) {
-  const tabs = [['weights', '/log'], ['run', '/log/run'], ['body', '/log/body']];
+export function logHeader({ t, date, dateLabel, title, active }) {
+  // Logging a past day keeps that day across the three tabs.
+  const q = new URLSearchParams(location.hash.split('?')[1] || '').get('d') ? `?d=${date}` : '';
+  const tabs = [['weights', `/log${q}`], ['run', `/log/run${q}`], ['body', `/log/body${q}`]];
   return `
     <header class="top top-bar">
       <a class="btn-round" href="#/" data-fid="back" aria-label="${t('log.back')}">${icon('chevronLeft')}</a>
       <div class="top-title"><h1 class="title">${title}</h1><p class="meta">${dateLabel}</p></div>
     </header>
+    ${q ? `<p class="past-banner">${icon('calendar')}<span>${t('plan.loggingFor', { date: dateLabel })}</span></p>` : ''}
     <nav class="tabs" aria-label="${t('logTabs.label')}">
       ${tabs.map(([k, href]) => `<a class="tab" href="#${href}" ${k === active ? 'aria-current="page"' : ''}>${t(`logTabs.${k}`)}</a>`).join('')}
     </nav>`;

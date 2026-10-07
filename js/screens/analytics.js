@@ -3,8 +3,9 @@ import { icon } from '../icons.js';
 import { esc } from '../ui.js';
 import { mount, tableHtml } from '../chart.js';
 import { paceText } from './run.js';
+import { weekResult } from '../dayplan.js';
 import {
-  SCHEDULE, today, iso, addDays, fromIso, weekStart, getSettings, getBodySeries, getRuns, getWorkouts,
+  getWeek, today, iso, addDays, fromIso, weekStart, getSettings, getBodySeries, getRuns, getWorkouts,
   getAllMachines, getMachineHistory,
 } from '../store.js';
 
@@ -72,7 +73,7 @@ export async function renderAnalytics(el) {
     const a = iso(w), b = iso(addDays(w, 6));
     const wkRuns = runsAll.filter((r) => r.date >= a && r.date <= b);
     const wkW = workoutsAll.filter((x) => x.date >= a && x.date <= b);
-    weeks.push({ start: w, iso: a, km: wkRuns.reduce((s, r) => s + r.distanceKm, 0), runs: wkRuns, workouts: wkW });
+    weeks.push({ start: w, iso: a, km: wkRuns.reduce((s, r) => s + r.distanceKm, 0), runs: wkRuns, workouts: wkW, plan: await getWeek(w) });
   }
   const goal = settings.runGoalKm;
   const paceRuns = runs.filter((r) => r.distanceKm > 0 && r.durationMin > 0);
@@ -87,17 +88,17 @@ export async function renderAnalytics(el) {
       const wo = w.workouts.find((x) => x.date === d);
       const rn = w.runs.find((x) => x.date === d);
       const future = d > iso(now);
-      const plan = SCHEDULE[fromIso(d).getDay()];
-      // today and later: show what is planned as hollow marks, like the Home week strip
-      const planned = d >= iso(now) && plan !== 'rest' && !wo && !rn
-        ? `<span class="mark mark-${plan}"></span><span class="mark mark-run"></span>` : '';
+      const p = w.plan[i].plan;
+      // what was planned but not done shows hollow, as on the Home week strip
+      const planned = `${p.weights && !wo ? `<span class="mark mark-${p.weights}"></span>` : ''}${p.run && !rn ? '<span class="mark mark-run"></span>' : ''}`;
       return `<span class="cal-cell ${future ? 'is-future' : ''} ${d === iso(now) ? 'is-today' : ''}" aria-hidden="true">${wo ? `<span class="mark mark-${wo.type} is-done"></span>` : ''}${rn ? '<span class="mark mark-run is-done"></span>' : ''}${planned}${!wo && !rn && !planned ? '<span class="mark mark-rest"></span>' : ''}</span>`;
     }).join('');
-    const label = `${t('analytics.weekOf', { date: dateFmt.short(w.start) })}: ${t('analytics.weightsOf', { n: w.workouts.length })}, ${t('analytics.runsOf', { n: w.runs.length })}`;
+    const wp = w.plan;
+    const label = `${t('analytics.weekOf', { date: dateFmt.short(w.start) })}: ${t('analytics.weightsOf', { n: wp.weightsDone, of: wp.weightsPlanned })}, ${t('analytics.runsOf', { n: wp.runsDone, of: wp.runsPlanned })}`;
     return `<li class="cal-row" aria-label="${label}">
       <span class="cal-week meta" aria-hidden="true">${dateFmt.short(w.start)}</span>
       <span class="cal-cells">${cells}</span>
-      <span class="cal-count meta" aria-hidden="true">${w.workouts.length}/4 · ${w.runs.length}/5</span>
+      <span class="cal-count meta" aria-hidden="true">${wp.weightsDone}/${wp.weightsPlanned} · ${wp.runsDone}/${wp.runsPlanned}</span>
     </li>`;
   }).join('');
 
@@ -159,6 +160,12 @@ export async function renderAnalytics(el) {
       ${paceRuns.length > 1 ? `
       <p class="label chart-title">${t('analytics.paceTrend')} <span class="meta">${t('analytics.paceHint')}</span></p>
       <div class="chart" data-chart="pace" role="img" aria-label="${t('analytics.chartPace', { summary: t('analytics.summaryFromTo', { from: paceText(paceRuns[0].distanceKm, paceRuns[0].durationMin), to: paceText(paceRuns.at(-1).distanceKm, paceRuns.at(-1).durationMin) }) })}"></div>` : ''}
+      <h3 class="label chart-title">${t('analytics.weekResults')}</h3>
+      <ul class="week-results">${[...weeks].reverse().map((w) => `<li>
+        <span class="week-row-date">${dateFmt.short(w.start)}</span>
+        <span class="meta">${num(w.km)} / ${num(w.plan.goal.runGoalKm)} ${t('run.km')}</span>
+        ${w.plan.ended ? weekResult(w.plan) : `<span class="meta">${t('analytics.inProgress')}</span>`}
+      </li>`).join('')}</ul>
       ${tableHtml(t('analytics.table'), [t('analytics.week'), t('run.distance')], weeks.map((w) => [dateFmt.short(w.start), `${num(w.km)} ${t('run.km')}`]))}
     </section>
 
@@ -201,7 +208,7 @@ export async function renderAnalytics(el) {
   mount(q('weeks'), {
     kind: 'bar', xFmt: short, yFmt: (v) => num(v, 0), tipFmt: (_, p) => `${num(p.y)} ${t('run.km')}`, height: 140, yMin: 0,
     goal: { y: goal, label: t('analytics.goal', { goal }) },
-    series: [{ label: t('analytics.weeklyKm'), cls: 's-run', points: weeks.map((w) => ({ x: w.start.getTime(), y: +w.km.toFixed(2), dim: w.km < goal })) }],
+    series: [{ label: t('analytics.weeklyKm'), cls: 's-run', points: weeks.map((w) => ({ x: w.start.getTime(), y: +w.km.toFixed(2), dim: w.km < w.plan.goal.runGoalKm })) }],
   });
   if (q('pace')) {
     const fmtPace = (secs) => `${Math.floor(secs / 60)}:${String(Math.round(secs % 60)).padStart(2, '0')}`;

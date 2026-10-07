@@ -1,12 +1,12 @@
 import { t, dateFmt, num } from '../i18n.js';
 import { icon } from '../icons.js';
 import { go, toast, esc, logHeader, stepperHtml, wireSteppers, parseNum, fieldError } from '../ui.js';
-import { today, iso, fromIso, getBodyOn, getBodySeries, saveBody } from '../store.js';
+import { activeDate, iso, fromIso, getBodyOn, getBodySeries, saveBody } from '../store.js';
 
 const STEP = 0.1;
 
 export async function renderBody(el) {
-  const now = today();
+  const now = activeDate();
   const date = iso(now);
   const [existing, series] = await Promise.all([getBodyOn(date), getBodySeries()]);
   const prev = [...series].reverse().find((b) => b.date < date);
@@ -14,7 +14,7 @@ export async function renderBody(el) {
 
   el.innerHTML = `
   <form class="screen log body-log" novalidate>
-    ${logHeader({ t, dateLabel: dateFmt.long(now), title: t('body.title'), active: 'body' })}
+    ${logHeader({ t, date, dateLabel: dateFmt.long(now), title: t('body.title'), active: 'body' })}
 
     <section class="card current textured glow-rest" aria-label="${t('body.weight')}">
       ${stepperHtml({ id: 'kg', label: t('body.weight'), value: num(start.weightKg, 1), unit: t('body.kg'), decLabel: t('body.dec', { step: num(STEP) }), incLabel: t('body.inc', { step: num(STEP) }) })}

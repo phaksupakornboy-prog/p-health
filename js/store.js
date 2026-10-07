@@ -10,7 +10,39 @@ const CACHE = 'phealth.cache.v1';
 // Short unique ids so two phones (or a retry) never collide in the sheet.
 const uid = (p) => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
-export const SCHEDULE = { 0: 'rest', 1: 'upper', 2: 'lower', 3: 'rest', 4: 'upper', 5: 'lower', 6: 'rest' };
+// Usual week, Monday first: weights (upper/lower) and/or run, or rest. Only a default:
+// any day can be changed on its own (db.plan), and each week can have its own goals.
+export const DEFAULT_TEMPLATE = ['upper+run', 'lower+run', 'rest', 'upper+run', 'lower+run', 'run', 'rest'];
+export function parseSlot(slot) {
+  const parts = String(slot || 'rest').split('+');
+  const weights = parts.includes('upper') ? 'upper' : parts.includes('lower') ? 'lower' : null;
+  return { weights, run: parts.includes('run') };
+}
+export function slotOf({ weights, run }) {
+  return [weights, run ? 'run' : null].filter(Boolean).join('+') || 'rest';
+}
+// The usual week and the default goals change over time; a past week is always judged
+// by what applied then. Each is kept as a list of { from: week start, value }.
+const HISTORY_KEYS = ['weekTemplate', 'runGoalKm', 'weightsGoal'];
+function valueAt(settings, key, weekIso) {
+  const hist = (settings.history && settings.history[key]) || [];
+  let v = settings[key];
+  const sorted = [...hist].sort((a, b) => (a.from < b.from ? -1 : 1));
+  if (sorted.length) v = (sorted.filter((h) => h.from <= weekIso).pop() || sorted[0]).value;
+  return v;
+}
+// Sheet cell format: "2026-09-28=15|2026-10-05=20" (a bare value counts from the start).
+function parseHistory(raw, cast) {
+  if (raw === undefined || raw === null || raw === '') return [];
+  return String(raw).split('|').map((part) => {
+    const i = part.indexOf('=');
+    return i === -1 ? { from: '0000-00-00', value: cast(part) } : { from: part.slice(0, i), value: cast(part.slice(i + 1)) };
+  });
+}
+const castTemplate = (v) => String(v).split(',');
+const serialise = (hist) => hist.map((h) => `${h.from}=${Array.isArray(h.value) ? h.value.join(',') : h.value}`).join('|');
+
+const DEFAULT_SETTINGS = { runGoalKm: 15, weightsGoal: 4, defaultSets: 3, defaultReps: 12, weightStepKg: 2.5, targetWeightKg: null, weekTemplate: DEFAULT_TEMPLATE };
 
 const CATALOG = [
   ['m01', 'Chest Press', 'upper', 'chest-press', 35],
@@ -35,6 +67,16 @@ export function today() {
   d.setHours(12, 0, 0, 0);
   return d;
 }
+// The day a log screen writes to: ?d=YYYY-MM-DD in the hash (past days only), else today.
+export function activeDate() {
+  const q = new URLSearchParams(location.hash.split('?')[1] || '').get('d');
+  const t = today();
+  if (q && /^\d{4}-\d{2}-\d{2}$/.test(q)) {
+    const d = new Date(`${q}T12:00:00`);
+    if (d <= t) return d;
+  }
+  return t;
+}
 export const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 export const fromIso = (s) => new Date(`${s}T12:00:00`);
 export const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
@@ -49,7 +91,8 @@ function seed(todayDate) {
   const rand = seeded(42);
   const db = {
     seededFor: iso(todayDate),
-    settings: { runGoalKm: 15, runPerSessionKm: 3, defaultSets: 3, defaultReps: 12, weightStepKg: 2.5, targetWeightKg: null },
+    settings: { ...DEFAULT_SETTINGS },
+    plan: [], weeks: [],
     machines: CATALOG.map(([id, name, group, muscleKey]) => ({ id, name, group, muscleKey, muscle: '', photoUrl: '', active: true })),
     workouts: [], sets: [], runs: [], body: [], drafts: {},
   };
@@ -60,9 +103,10 @@ function seed(todayDate) {
 
   for (let back = 35; back >= 1; back--) {
     const d = addDays(todayDate, -back);
-    const plan = SCHEDULE[d.getDay()];
+    const slot = parseSlot(DEFAULT_TEMPLATE[(d.getDay() + 6) % 7]);
+    const plan = slot.weights || (slot.run ? 'runday' : 'rest');
     const weeksAgo = Math.floor(back / 7);
-    if (plan !== 'rest' && rand() > 0.08) {
+    if ((plan === 'upper' || plan === 'lower') && rand() > 0.08) {
       const w = { id: `w${wid++}`, date: iso(d), type: plan, note: '' };
       db.workouts.push(w);
       (plan === 'upper' ? upperDay : lowerDay).forEach((mid) => {
@@ -75,7 +119,7 @@ function seed(todayDate) {
       const min = 19 + rand() * 3 - (5 - weeksAgo) * 0.25;
       db.runs.push({ id: `r${rid++}`, date: iso(d), distanceKm: 3, durationMin: +min.toFixed(1), speedKmh: null, incline: null, note: '' });
     }
-    if (plan === 'rest' && d.getDay() === 6 && rand() > 0.3) {
+    if (plan === 'runday' && rand() > 0.3) {
       db.runs.push({ id: `r${rid++}`, date: iso(d), distanceKm: 3, durationMin: +(20 + rand() * 2).toFixed(1), speedKmh: null, incline: null, note: '' });
     }
   }
@@ -100,10 +144,18 @@ function fromSheets(data) {
   const st = data.settings || {};
   return {
     settings: {
-      runGoalKm: n(st.run_goal_km) ?? 15, runPerSessionKm: n(st.run_per_session_km) ?? 3,
+      runGoalKm: n(st.run_goal_km) ?? 15, weightsGoal: n(st.weights_goal) ?? 4,
       defaultSets: n(st.default_sets) ?? 3, defaultReps: n(st.default_reps) ?? 12,
       weightStepKg: n(st.weight_step_kg) ?? 2.5, targetWeightKg: n(st.target_weight_kg),
+      weekTemplate: DEFAULT_TEMPLATE,
+      history: {
+        weekTemplate: parseHistory(st.week_template, castTemplate),
+        runGoalKm: parseHistory(st.run_goal_km, Number),
+        weightsGoal: parseHistory(st.weights_goal, Number),
+      },
     },
+    plan: (data.plan || []).map((r) => ({ date: String(r.date), weights: r.weights ? String(r.weights) : null, run: bool(r.run), runKm: n(r.run_km), note: String(r.note || '') })),
+    weeks: (data.weeks || []).map((r) => ({ weekStart: String(r.week_start), runGoalKm: n(r.run_goal_km), weightsGoal: n(r.weights_goal) })),
     machines: [...new Map(data.machines.map((r) => [String(r.id), r])).values()].map((r) => ({ id: String(r.id), name: String(r.name), group: String(r.group), muscle: String(r.muscle || ''), muscleKey: String(r.muscle_key || ''), photoUrl: String(r.photo_url || ''), active: bool(r.active) })),
     workouts: data.workouts.map((r) => ({ id: String(r.id), date: String(r.date), type: String(r.type), note: String(r.note || '') })),
     sets: data.sets.map((r) => ({ id: String(r.id), workoutId: String(r.workout_id), machineId: String(r.machine_id), setNo: n(r.set_no), weightKg: n(r.weight_kg) ?? 0, reps: n(r.reps) ?? 0, note: String(r.note || '') })),
@@ -128,7 +180,7 @@ export async function init() {
     return { mode, fresh: false, cached: true };
   }
   const r = await refresh();
-  if (!r.ok) db = { settings: { runGoalKm: 15, runPerSessionKm: 3, defaultSets: 3, defaultReps: 12, weightStepKg: 2.5, targetWeightKg: null }, machines: [], workouts: [], sets: [], runs: [], body: [], drafts: {} };
+  if (!r.ok) db = { settings: { ...DEFAULT_SETTINGS }, plan: [], weeks: [], machines: [], workouts: [], sets: [], runs: [], body: [], drafts: {} };
   return { mode, fresh: r.ok, error: r.error };
 }
 
@@ -136,6 +188,10 @@ async function refresh() {
   try {
     await flush();
     const fresh = fromSheets(await fetchAll());
+    for (const k of HISTORY_KEYS) {
+      const h = fresh.settings.history[k];
+      if (h.length) fresh.settings[k] = [...h].sort((a, b) => (a.from < b.from ? -1 : 1)).pop().value;
+    }
     db = { ...fresh, drafts: db?.drafts || cachedDrafts() };
     persist();
     return { ok: true };
@@ -156,6 +212,8 @@ function load() {
     } catch { /* storage blocked: run in memory */ }
   }
   if (!db) { db = seed(today()); persist(); }
+  db.plan ||= []; db.weeks ||= [];
+  db.settings = { ...DEFAULT_SETTINGS, ...db.settings };
   return db;
 }
 function persist() {
@@ -191,16 +249,122 @@ export async function getBestWeight(machineId) {
   return load().sets.filter((s) => s.machineId === machineId).reduce((m, s) => Math.max(m, s.weightKg), 0);
 }
 
+// The plan for one day: the day's own entry if it was changed, else the usual week.
+export function planFor(isoDate) {
+  const d = load();
+  const own = d.plan.find((p) => p.date === isoDate);
+  if (own) return { weights: own.weights, run: own.run, runKm: own.runKm, note: own.note, custom: true };
+  const tpl = valueAt(d.settings, 'weekTemplate', iso(weekStart(fromIso(isoDate)))) || DEFAULT_TEMPLATE;
+  const slot = parseSlot(tpl[(fromIso(isoDate).getDay() + 6) % 7]);
+  return { ...slot, runKm: null, note: '', custom: false };
+}
+
+export async function getWeekGoal(weekStartIso) {
+  const d = load();
+  const own = d.weeks.find((w) => w.weekStart === weekStartIso);
+  return {
+    runGoalKm: own?.runGoalKm ?? valueAt(d.settings, 'runGoalKm', weekStartIso),
+    weightsGoal: own?.weightsGoal ?? valueAt(d.settings, 'weightsGoal', weekStartIso),
+    custom: !!own,
+  };
+}
+
+/**
+ * One week with plan, what was done, and each day's run target. The weekly goal is
+ * split evenly over the planned run days (a distance set by hand is taken off first)
+ * and stays fixed: running more or less one day never moves the other days. Each week
+ * stands alone; a shortfall is shown, never carried over.
+ */
 export async function getWeek(anchor) {
   const d = load();
   const start = weekStart(anchor);
-  return Array.from({ length: 7 }, (_, i) => {
+  const todayIso = iso(today());
+  const goal = await getWeekGoal(iso(start));
+  const days = Array.from({ length: 7 }, (_, i) => {
     const day = addDays(start, i);
     const key = iso(day);
     const workout = d.workouts.find((w) => w.date === key) || null;
     const runKm = d.runs.filter((r) => r.date === key).reduce((s, r) => s + r.distanceKm, 0);
-    return { date: day, iso: key, plan: SCHEDULE[day.getDay()], workout, runKm };
+    return { date: day, iso: key, plan: planFor(key), workout, runKm, past: key < todayIso, isToday: key === todayIso };
   });
+  const doneKm = days.reduce((s, x) => s + x.runKm, 0);
+  const runDays = days.filter((x) => x.plan.run);
+  const fixed = runDays.filter((x) => x.plan.runKm).reduce((s, x) => s + x.plan.runKm, 0);
+  const auto = runDays.filter((x) => !x.plan.runKm);
+  const perAuto = auto.length ? Math.max(0, goal.runGoalKm - fixed) / auto.length : 0;
+  days.forEach((x) => {
+    // kept exact so the week adds up to the goal; screens round when they show it
+    x.runTargetKm = !x.plan.run ? 0 : (x.plan.runKm || perAuto);
+  });
+  const ended = !days[6].past ? false : true;
+  return Object.assign(days, {
+    goal, doneKm, ended,
+    // positive = still short of the goal, negative = past it
+    gapKm: Math.round((goal.runGoalKm - doneKm) * 10) / 10,
+    plannedKm: days.reduce((s, x) => s + x.runTargetKm, 0),
+    weightsPlanned: days.filter((x) => x.plan.weights).length,
+    weightsDone: days.filter((x) => x.workout).length,
+    runsPlanned: days.filter((x) => x.plan.run).length,
+    runsDone: days.filter((x) => x.runKm > 0).length,
+  });
+}
+
+// Change one day. Passing null puts the day back on the usual week.
+export async function setPlan(isoDate, plan) {
+  const d = load();
+  d.plan = d.plan.filter((p) => p.date !== isoDate);
+  if (plan) d.plan.push({ date: isoDate, weights: plan.weights || null, run: !!plan.run, runKm: plan.runKm || null, note: plan.note || '' });
+  persist();
+  remote('savePlan', plan
+    ? { date: isoDate, weights: plan.weights || '', run: !!plan.run, run_km: plan.runKm || '', note: plan.note || '' }
+    : { date: isoDate, clear: true });
+}
+
+export async function setWeekGoal(weekStartIso, { runGoalKm, weightsGoal }) {
+  const d = load();
+  d.weeks = d.weeks.filter((w) => w.weekStart !== weekStartIso);
+  d.weeks.push({ weekStart: weekStartIso, runGoalKm, weightsGoal });
+  persist();
+  remote('saveWeek', { week_start: weekStartIso, run_goal_km: runGoalKm, weights_goal: weightsGoal });
+}
+
+const SETTING_KEYS = { runGoalKm: 'run_goal_km', weightsGoal: 'weights_goal', defaultSets: 'default_sets', defaultReps: 'default_reps', weightStepKg: 'weight_step_kg', targetWeightKg: 'target_weight_kg', weekTemplate: 'week_template' };
+export async function saveSettings(patch) {
+  const d = load();
+  const from = iso(weekStart(today()));
+  d.settings.history ||= {};
+  for (const [k, v] of Object.entries(patch)) {
+    if (JSON.stringify(v) === JSON.stringify(d.settings[k])) { delete patch[k]; continue; }
+    if (HISTORY_KEYS.includes(k)) {
+      // the first change keeps what applied before it for all earlier weeks
+      let hist = d.settings.history[k] || [];
+      if (!hist.length) hist = [{ from: '0000-00-00', value: d.settings[k] }];
+      d.settings.history[k] = hist.filter((h) => h.from !== from).concat({ from, value: v });
+    }
+  }
+  Object.assign(d.settings, patch);
+  persist();
+  for (const [k, v] of Object.entries(patch)) {
+    if (!SETTING_KEYS[k]) continue;
+    const value = HISTORY_KEYS.includes(k) ? serialise(d.settings.history[k]) : (v ?? '');
+    remote('saveSetting', { key: SETTING_KEYS[k], value });
+  }
+}
+
+// Copy every day of one week onto the next, as changed days.
+export async function copyWeek(fromStartIso) {
+  const from = fromIso(fromStartIso);
+  for (let i = 0; i < 7; i++) {
+    const p = planFor(iso(addDays(from, i)));
+    await setPlan(iso(addDays(from, i + 7)), { weights: p.weights, run: p.run, runKm: p.runKm, note: '' });
+  }
+}
+
+export async function resetRange(fromIsoDate, toIsoDate) {
+  const d = load();
+  const hits = d.plan.filter((p) => p.date >= fromIsoDate && p.date <= toIsoDate).map((p) => p.date);
+  for (const date of hits) await setPlan(date, null);
+  return hits.length;
 }
 
 export async function getWorkoutOn(isoDate) {
