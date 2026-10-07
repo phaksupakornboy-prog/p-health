@@ -1,0 +1,724 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$description": "P-Health source of truth. Dark-first single theme (SPEC: deep blue-black, not grey). Build: node scripts/build_tokens.mjs --in app/design-tokens.json --out app/css/tokens.css. Contrast gate: python3 scripts/validate_contrast.py app/design-tokens.json",
+  "primitive": {
+    "ink": {
+      "950": {
+        "$type": "color",
+        "$value": "#050814",
+        "$description": "Page. Blue-black from SPEC."
+      },
+      "900": {
+        "$type": "color",
+        "$value": "#0A1024",
+        "$description": "Card."
+      },
+      "850": {
+        "$type": "color",
+        "$value": "#131C3A",
+        "$description": "Raised control inside a card."
+      },
+      "800": {
+        "$type": "color",
+        "$value": "#1B2547"
+      },
+      "500": {
+        "$type": "color",
+        "$value": "#5A6588",
+        "$description": "3.47:1 on page. Essential control borders."
+      },
+      "400": {
+        "$type": "color",
+        "$value": "#8B95B3",
+        "$description": "5.62:1 on raised."
+      },
+      "300": {
+        "$type": "color",
+        "$value": "#A9B3CF"
+      },
+      "50": {
+        "$type": "color",
+        "$value": "#F4F6FC"
+      },
+      "line": {
+        "$type": "color",
+        "$value": "#162446",
+        "$description": "Card hairline, sampled from ref-06."
+      }
+    },
+    "blue": {
+      "500": {
+        "$type": "color",
+        "$value": "#2A62F5",
+        "$description": "Upper. White text 5.04:1."
+      },
+      "600": {
+        "$type": "color",
+        "$value": "#2457E0"
+      },
+      "700": {
+        "$type": "color",
+        "$value": "#1D49C2"
+      },
+      "300": {
+        "$type": "color",
+        "$value": "#5B8CFF",
+        "$description": "Upper as text on dark, 6.32:1."
+      },
+      "electric": {
+        "$type": "color",
+        "$value": "#0146FC",
+        "$description": "Glow core sampled from ref-04. White text 6.4:1."
+      },
+      "edge": {
+        "$type": "color",
+        "$value": "#4A64B0",
+        "$description": "Glass control border, 3.36:1 on card (WCAG 1.4.11)."
+      }
+    },
+    "orange": {
+      "500": {
+        "$type": "color",
+        "$value": "#FF7A33",
+        "$description": "Lower. Dark text only (7.69:1)."
+      },
+      "600": {
+        "$type": "color",
+        "$value": "#F2661C"
+      },
+      "700": {
+        "$type": "color",
+        "$value": "#DB5810"
+      }
+    },
+    "teal": {
+      "500": {
+        "$type": "color",
+        "$value": "#2DD4BF",
+        "$description": "Run. Dark text only (10.73:1)."
+      },
+      "600": {
+        "$type": "color",
+        "$value": "#22BBA8"
+      }
+    },
+    "red": {
+      "400": {
+        "$type": "color",
+        "$value": "#FF7A85"
+      },
+      "600": {
+        "$type": "color",
+        "$value": "#E5484D"
+      }
+    },
+    "white": {
+      "$type": "color",
+      "$value": "#FFFFFF"
+    },
+    "white-soft": {
+      "$type": "color",
+      "$value": "#E6EAF5"
+    }
+  },
+  "semantic": {
+    "surface": {
+      "page": {
+        "$type": "color",
+        "$value": "{primitive.ink.950}"
+      },
+      "card": {
+        "$type": "color",
+        "$value": "{primitive.ink.900}"
+      },
+      "raised": {
+        "$type": "color",
+        "$value": "{primitive.ink.850}"
+      },
+      "pressed": {
+        "$type": "color",
+        "$value": "{primitive.ink.800}"
+      },
+      "scrim": {
+        "$type": "color",
+        "$value": "rgba(2, 4, 12, 0.72)"
+      },
+      "nav": {
+        "$type": "color",
+        "$value": "rgba(5, 8, 20, 0.92)"
+      },
+      "glass": {
+        "$type": "color",
+        "$value": "#152143",
+        "$description": "Glass tint pre-blended onto card so contrast is measurable (was rgba(91,140,255,a))."
+      },
+      "glass-hover": {
+        "$type": "color",
+        "$value": "#1C2B54",
+        "$description": "Glass tint pre-blended onto card so contrast is measurable (was rgba(91,140,255,a))."
+      },
+      "glass-active": {
+        "$type": "color",
+        "$value": "#223566",
+        "$description": "Glass tint pre-blended onto card so contrast is measurable (was rgba(91,140,255,a))."
+      },
+      "glass-highlight": {
+        "$type": "color",
+        "$value": "rgba(255, 255, 255, 0.10)",
+        "$description": "Top inner light on glass."
+      },
+      "page-glow": {
+        "$type": "color",
+        "$value": "rgba(42, 98, 245, 0.16)",
+        "$description": "Ambient haze at the top of the page (ref-02, ref-05)."
+      },
+      "texture": {
+        "$type": "color",
+        "$value": "rgba(150, 180, 255, 0.18)",
+        "$description": "Dot grid inside glows (ref-04)."
+      }
+    },
+    "text": {
+      "primary": {
+        "$type": "color",
+        "$value": "{primitive.ink.50}"
+      },
+      "secondary": {
+        "$type": "color",
+        "$value": "{primitive.ink.300}"
+      },
+      "tertiary": {
+        "$type": "color",
+        "$value": "{primitive.ink.400}"
+      },
+      "on-action": {
+        "$type": "color",
+        "$value": "{primitive.ink.950}",
+        "$description": "Primary action is a white capsule, so its label is ink."
+      },
+      "on-upper": {
+        "$type": "color",
+        "$value": "{primitive.white}"
+      },
+      "on-lower": {
+        "$type": "color",
+        "$value": "{primitive.ink.950}"
+      },
+      "on-run": {
+        "$type": "color",
+        "$value": "{primitive.ink.950}"
+      },
+      "link": {
+        "$type": "color",
+        "$value": "{primitive.blue.300}"
+      }
+    },
+    "border": {
+      "default": {
+        "$type": "color",
+        "$value": "{primitive.ink.line}",
+        "$description": "Decorative hairline on cards."
+      },
+      "strong": {
+        "$type": "color",
+        "$value": "{primitive.ink.500}"
+      },
+      "focus": {
+        "$type": "color",
+        "$value": "{primitive.blue.300}"
+      },
+      "glass": {
+        "$type": "color",
+        "$value": "{primitive.blue.edge}"
+      }
+    },
+    "action": {
+      "primary": {
+        "$type": "color",
+        "$value": "{primitive.white}"
+      },
+      "primary-hover": {
+        "$type": "color",
+        "$value": "{primitive.white-soft}"
+      },
+      "primary-active": {
+        "$type": "color",
+        "$value": "{primitive.ink.300}"
+      },
+      "destructive": {
+        "$type": "color",
+        "$value": "{primitive.red.400}",
+        "$description": "Destructive text/icon on dark. 7.3:1 on card."
+      }
+    },
+    "category": {
+      "upper": {
+        "$type": "color",
+        "$value": "{primitive.blue.500}"
+      },
+      "upper-hover": {
+        "$type": "color",
+        "$value": "{primitive.blue.600}"
+      },
+      "upper-active": {
+        "$type": "color",
+        "$value": "{primitive.blue.700}"
+      },
+      "upper-text": {
+        "$type": "color",
+        "$value": "{primitive.blue.300}"
+      },
+      "upper-glow": {
+        "$type": "color",
+        "$value": "rgba(42, 98, 245, 0.38)",
+        "$description": "Wide halo."
+      },
+      "lower": {
+        "$type": "color",
+        "$value": "{primitive.orange.500}"
+      },
+      "lower-hover": {
+        "$type": "color",
+        "$value": "{primitive.orange.600}"
+      },
+      "lower-active": {
+        "$type": "color",
+        "$value": "{primitive.orange.700}"
+      },
+      "lower-text": {
+        "$type": "color",
+        "$value": "{primitive.orange.500}"
+      },
+      "lower-glow": {
+        "$type": "color",
+        "$value": "rgba(255, 122, 51, 0.30)"
+      },
+      "run": {
+        "$type": "color",
+        "$value": "{primitive.teal.500}"
+      },
+      "run-hover": {
+        "$type": "color",
+        "$value": "{primitive.teal.600}"
+      },
+      "run-text": {
+        "$type": "color",
+        "$value": "{primitive.teal.500}"
+      },
+      "run-glow": {
+        "$type": "color",
+        "$value": "rgba(45, 212, 191, 0.24)"
+      },
+      "rest-glow": {
+        "$type": "color",
+        "$value": "rgba(139, 149, 179, 0.22)"
+      },
+      "upper-core": {
+        "$type": "color",
+        "$value": "rgba(1, 70, 252, 0.85)",
+        "$description": "Concentrated light at the bottom edge (ref-04). Keep text out of the bottom quarter."
+      },
+      "upper-edge": {
+        "$type": "color",
+        "$value": "rgba(110, 150, 255, 0.95)"
+      },
+      "lower-core": {
+        "$type": "color",
+        "$value": "rgba(255, 98, 26, 0.62)"
+      },
+      "lower-edge": {
+        "$type": "color",
+        "$value": "rgba(255, 160, 100, 0.95)"
+      },
+      "run-core": {
+        "$type": "color",
+        "$value": "rgba(20, 200, 180, 0.42)"
+      },
+      "run-edge": {
+        "$type": "color",
+        "$value": "rgba(94, 234, 212, 0.9)"
+      },
+      "rest-core": {
+        "$type": "color",
+        "$value": "rgba(120, 135, 190, 0.40)"
+      },
+      "rest-edge": {
+        "$type": "color",
+        "$value": "rgba(170, 180, 215, 0.7)"
+      }
+    },
+    "feedback": {
+      "success": {
+        "$type": "color",
+        "$value": "{primitive.teal.500}"
+      },
+      "error": {
+        "$type": "color",
+        "$value": "{primitive.red.400}"
+      }
+    },
+    "accent": {
+      "bg": {
+        "$type": "color",
+        "$value": "{primitive.blue.500}",
+        "$description": "Change badge pill (ref-01)."
+      },
+      "text": {
+        "$type": "color",
+        "$value": "{primitive.white}"
+      }
+    },
+    "chart": {
+      "ink": {
+        "$type": "color",
+        "$value": "#F4F6FC",
+        "$description": "Neutral series (body weight average)."
+      },
+      "ink-soft": {
+        "$type": "color",
+        "$value": "#8B95B3",
+        "$description": "Neutral secondary series (daily weigh-ins)."
+      },
+      "goal": {
+        "$type": "color",
+        "$value": "#A9B3CF",
+        "$description": "Goal reference line."
+      },
+      "grid": {
+        "$type": "color",
+        "$value": "rgba(150, 180, 255, 0.30)",
+        "$description": "Dotted gridlines: visible but recessive."
+      }
+    }
+  },
+  "component": {
+    "button": {
+      "primary-bg": {
+        "$type": "color",
+        "$value": "{semantic.action.primary}"
+      },
+      "primary-bg-hover": {
+        "$type": "color",
+        "$value": "{semantic.action.primary-hover}"
+      },
+      "primary-bg-active": {
+        "$type": "color",
+        "$value": "{semantic.action.primary-active}"
+      },
+      "primary-text": {
+        "$type": "color",
+        "$value": "{semantic.text.on-action}"
+      },
+      "round-bg": {
+        "$type": "color",
+        "$value": "{semantic.surface.glass}"
+      },
+      "round-bg-hover": {
+        "$type": "color",
+        "$value": "{semantic.surface.glass-hover}"
+      },
+      "round-border": {
+        "$type": "color",
+        "$value": "{semantic.border.glass}"
+      },
+      "round-bg-active": {
+        "$type": "color",
+        "$value": "{semantic.surface.glass-active}"
+      },
+      "solid-round-bg": {
+        "$type": "color",
+        "$value": "{semantic.action.primary}",
+        "$description": "White circle, the stepper (ref-01 action circles)."
+      },
+      "solid-round-bg-hover": {
+        "$type": "color",
+        "$value": "{semantic.action.primary-hover}"
+      },
+      "solid-round-bg-active": {
+        "$type": "color",
+        "$value": "{semantic.action.primary-active}"
+      },
+      "solid-round-text": {
+        "$type": "color",
+        "$value": "{semantic.text.on-action}"
+      }
+    },
+    "nav": {
+      "item-text": {
+        "$type": "color",
+        "$value": "{semantic.text.tertiary}"
+      },
+      "item-text-active": {
+        "$type": "color",
+        "$value": "{semantic.text.primary}"
+      }
+    }
+  },
+  "font": {
+    "family": {
+      "sans": {
+        "$type": "fontFamily",
+        "$value": [
+          "Sora",
+          "IBM Plex Sans Thai",
+          "system-ui",
+          "sans-serif"
+        ]
+      }
+    },
+    "size": {
+      "xs": {
+        "$type": "dimension",
+        "$value": "0.75rem"
+      },
+      "sm": {
+        "$type": "dimension",
+        "$value": "0.875rem"
+      },
+      "base": {
+        "$type": "dimension",
+        "$value": "1rem"
+      },
+      "lg": {
+        "$type": "dimension",
+        "$value": "1.125rem"
+      },
+      "xl": {
+        "$type": "dimension",
+        "$value": "1.25rem"
+      },
+      "2xl": {
+        "$type": "dimension",
+        "$value": "1.5rem"
+      },
+      "3xl": {
+        "$type": "dimension",
+        "$value": "1.875rem"
+      },
+      "4xl": {
+        "$type": "dimension",
+        "$value": "2.25rem",
+        "$description": "Card numbers (body weight, run ring)."
+      },
+      "5xl": {
+        "$type": "dimension",
+        "$value": "3rem"
+      },
+      "6xl": {
+        "$type": "dimension",
+        "$value": "3.75rem"
+      }
+    },
+    "weight": {
+      "regular": {
+        "$type": "fontWeight",
+        "$value": 400
+      },
+      "medium": {
+        "$type": "fontWeight",
+        "$value": 500
+      },
+      "semibold": {
+        "$type": "fontWeight",
+        "$value": 600
+      },
+      "bold": {
+        "$type": "fontWeight",
+        "$value": 700
+      },
+      "display": {
+        "$type": "fontWeight",
+        "$value": 500,
+        "$description": "Refs set big type at medium, not bold."
+      }
+    }
+  },
+  "space": {
+    "1": {
+      "$type": "dimension",
+      "$value": "0.25rem"
+    },
+    "2": {
+      "$type": "dimension",
+      "$value": "0.5rem"
+    },
+    "3": {
+      "$type": "dimension",
+      "$value": "0.75rem"
+    },
+    "4": {
+      "$type": "dimension",
+      "$value": "1rem"
+    },
+    "5": {
+      "$type": "dimension",
+      "$value": "1.25rem"
+    },
+    "6": {
+      "$type": "dimension",
+      "$value": "1.5rem"
+    },
+    "8": {
+      "$type": "dimension",
+      "$value": "2rem"
+    },
+    "10": {
+      "$type": "dimension",
+      "$value": "2.5rem"
+    },
+    "12": {
+      "$type": "dimension",
+      "$value": "3rem"
+    },
+    "16": {
+      "$type": "dimension",
+      "$value": "4rem"
+    },
+    "24": {
+      "$type": "dimension",
+      "$value": "6rem"
+    }
+  },
+  "radius": {
+    "sm": {
+      "$type": "dimension",
+      "$value": "0.75rem"
+    },
+    "md": {
+      "$type": "dimension",
+      "$value": "1.125rem"
+    },
+    "card": {
+      "$type": "dimension",
+      "$value": "1.625rem",
+      "$description": "26px, SPEC asks 24-28."
+    },
+    "full": {
+      "$type": "dimension",
+      "$value": "999px"
+    }
+  },
+  "size": {
+    "hairline": {
+      "$type": "dimension",
+      "$value": "1px"
+    },
+    "ring": {
+      "$type": "dimension",
+      "$value": "2px"
+    },
+    "dot": {
+      "$type": "dimension",
+      "$value": "0.5rem"
+    },
+    "icon": {
+      "$type": "dimension",
+      "$value": "1.375rem"
+    },
+    "touch": {
+      "$type": "dimension",
+      "$value": "2.75rem",
+      "$description": "44px gym minimum."
+    },
+    "control": {
+      "$type": "dimension",
+      "$value": "3.25rem"
+    },
+    "stepper": {
+      "$type": "dimension",
+      "$value": "3.75rem",
+      "$description": "60px +/- per SPEC."
+    },
+    "nav": {
+      "$type": "dimension",
+      "$value": "4.5rem"
+    },
+    "app": {
+      "$type": "dimension",
+      "$value": "30rem",
+      "$description": "Phone column cap on wider screens."
+    },
+    "texture": {
+      "$type": "dimension",
+      "$value": "0.75rem",
+      "$description": "Dot grid pitch."
+    },
+    "texture-dot": {
+      "$type": "dimension",
+      "$value": "1.2px"
+    }
+  },
+  "motion": {
+    "duration": {
+      "fast": {
+        "$type": "duration",
+        "$value": "120ms"
+      },
+      "base": {
+        "$type": "duration",
+        "$value": "200ms"
+      },
+      "slow": {
+        "$type": "duration",
+        "$value": "320ms"
+      }
+    },
+    "easing": {
+      "ease-out": {
+        "$type": "cubicBezier",
+        "$value": [
+          0.16,
+          1,
+          0.3,
+          1
+        ]
+      },
+      "ease-in-out": {
+        "$type": "cubicBezier",
+        "$value": [
+          0.65,
+          0,
+          0.35,
+          1
+        ]
+      }
+    }
+  },
+  "opacity": {
+    "disabled": {
+      "$type": "number",
+      "$value": 0.5
+    }
+  },
+  "z": {
+    "nav": {
+      "$type": "number",
+      "$value": 20
+    },
+    "sheet": {
+      "$type": "number",
+      "$value": 40
+    },
+    "toast": {
+      "$type": "number",
+      "$value": 50
+    }
+  },
+  "chart": {
+    "$description": "Chart marks on the dark card. Validated with the dataviz validator (dark, surface #0A1024): lightness band, chroma, CVD and contrast all pass. Brand orange/teal sit too light for marks, so charts use one step darker of the same hue.",
+    "categorical": {
+      "upper": {
+        "$type": "color",
+        "$value": "#5B8CFF"
+      },
+      "lower": {
+        "$type": "color",
+        "$value": "#E35F1C"
+      },
+      "run": {
+        "$type": "color",
+        "$value": "#0FA595"
+      }
+    }
+  }
+}
