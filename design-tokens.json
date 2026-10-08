@@ -389,6 +389,27 @@
         "$value": "rgba(150, 180, 255, 0.30)",
         "$description": "Dotted gridlines: visible but recessive."
       }
+    },
+    "print": {
+      "surface": {
+        "$type": "color",
+        "$value": "#FFFFFF",
+        "$description": "Paper. The summary prints light so it reads on any printer."
+      },
+      "ink": {
+        "$type": "color",
+        "$value": "#111827"
+      },
+      "muted": {
+        "$type": "color",
+        "$value": "#4B5563",
+        "$description": "7.6:1 on white."
+      },
+      "line": {
+        "$type": "color",
+        "$value": "#D1D5DB",
+        "$description": "Decorative card edge on paper."
+      }
     }
   },
   "component": {

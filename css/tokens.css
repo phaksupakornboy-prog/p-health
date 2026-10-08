@@ -59,6 +59,10 @@
   --color-chart-ink-soft: #8B95B3;
   --color-chart-goal: #A9B3CF;
   --color-chart-grid: rgba(150, 180, 255, 0.30);
+  --color-print-surface: #FFFFFF;
+  --color-print-ink: #111827;
+  --color-print-muted: #4B5563;
+  --color-print-line: #D1D5DB;
   --color-button-primary-bg: #FFFFFF;
   --color-button-primary-bg-hover: #E6EAF5;
   --color-button-primary-bg-active: #A9B3CF;

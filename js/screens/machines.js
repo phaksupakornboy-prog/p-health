@@ -1,7 +1,7 @@
 import { t, has, dateFmt } from '../i18n.js';
 import { icon } from '../icons.js';
 import { toast, esc } from '../ui.js';
-import { getAllMachines, updateMachine, addMachine, getMachineHistory, fromIso, dataMode } from '../store.js';
+import { getAllMachines, updateMachine, addMachine, getMachineHistory, fromIso, dataMode, getRoutine, setRoutine } from '../store.js';
 import { post } from '../remote.js';
 
 let S;
@@ -39,7 +39,32 @@ function row(m) {
   </button></li>`;
 }
 
+// The order machines come up in the weights log, per group.
+function routineCard() {
+  const g = S.rtab;
+  const r = S.routines[g];
+  const name = (id) => esc(S.machines.find((m) => m.id === id)?.name || id);
+  const rows = r.routine.map((id, i) => `<li class="routine-row">
+      <span class="routine-n" aria-hidden="true">${i + 1}</span>
+      <span class="routine-name">${name(id)}</span>
+      <button type="button" class="btn-round btn-sm" data-r="up" data-id="${id}" data-fid="up-${id}" aria-label="${t('routine.up', { name: name(id) })}" ${i === 0 ? 'disabled' : ''}>${icon('chevronUp')}</button>
+      <button type="button" class="btn-round btn-sm" data-r="down" data-id="${id}" data-fid="down-${id}" aria-label="${t('routine.down', { name: name(id) })}" ${i === r.routine.length - 1 ? 'disabled' : ''}>${icon('chevronDown')}</button>
+      <button type="button" class="btn-round btn-sm" data-r="out" data-id="${id}" data-fid="out-${id}" aria-label="${t('routine.out', { name: name(id) })}">${icon('x')}</button>
+    </li>`).join('');
+  const others = r.others.map((id) => `<li><button type="button" class="chip-btn" data-r="in" data-id="${id}" data-fid="in-${id}">${icon('plus')}<span>${name(id)}</span></button></li>`).join('');
+  return `<section class="card" aria-labelledby="r-title">
+    <h2 id="r-title" class="label">${t('routine.title')}</h2>
+    <p class="meta">${t('routine.hint')}</p>
+    <div class="segmented" role="radiogroup" aria-label="${t('routine.group')}">
+      ${['upper', 'lower'].map((x) => `<button type="button" role="radio" class="seg seg-${x}" data-rtab="${x}" data-fid="rtab-${x}" aria-checked="${g === x}" tabindex="${g === x ? 0 : -1}"><span class="dot dot-${x}" aria-hidden="true"></span>${t(`category.${x}`)}</button>`).join('')}
+    </div>
+    ${r.routine.length ? `<ol class="routine">${rows}</ol>` : `<p class="meta">${t('routine.empty')}</p>`}
+    ${others ? `<p class="label">${t('routine.notIn')}</p><ul class="chip-wrap">${others}</ul>` : ''}
+  </section>`;
+}
+
 function render() {
+  const fid = document.activeElement?.dataset?.fid;
   const active = S.machines.filter((m) => m.active);
   const hidden = S.machines.filter((m) => !m.active);
   const group = (g) => {
@@ -55,6 +80,7 @@ function render() {
       <div><h1 class="title-lg">${t('machinesScreen.title')}</h1><p class="meta">${t('machinesScreen.count', { n: active.length })}</p></div>
       <button class="btn btn-primary btn-compact" data-add>${icon('plus')}<span>${t('machinesScreen.add')}</span></button>
     </header>
+    ${routineCard()}
     ${group('upper')}
     ${group('lower')}
     ${hidden.length ? `<section class="session" aria-labelledby="g-hidden">
@@ -64,6 +90,27 @@ function render() {
     </section>` : ''}
   </div>
   <dialog class="sheet" id="editor" aria-labelledby="editor-title"><div class="sheet-body"></div></dialog>`;
+  if (fid) S.root.querySelector(`[data-fid="${CSS.escape(fid)}"]`)?.focus({ preventScroll: true });
+}
+
+async function loadRoutines() {
+  S.routines = { upper: await getRoutine('upper'), lower: await getRoutine('lower') };
+}
+
+async function onRoutine(b) {
+  const g = S.rtab;
+  const ids = [...S.routines[g].routine];
+  const id = b.dataset.id;
+  const i = ids.indexOf(id);
+  if (b.dataset.r === 'up' && i > 0) [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]];
+  if (b.dataset.r === 'down' && i < ids.length - 1) [ids[i + 1], ids[i]] = [ids[i], ids[i + 1]];
+  if (b.dataset.r === 'out') ids.splice(i, 1);
+  if (b.dataset.r === 'in') ids.push(id);
+  await setRoutine(g, ids);
+  await loadRoutines();
+  render();
+  // a moved row keeps focus on its own arrow; an added or removed one hands focus on
+  if (b.dataset.r === 'out' || b.dataset.r === 'in') S.root.querySelector('[data-rtab]')?.focus({ preventScroll: true });
 }
 
 function openEditor(m) {
@@ -158,6 +205,7 @@ async function onSubmit(e) {
 
 async function refresh() {
   S.machines = await getAllMachines();
+  await loadRoutines();
   render();
 }
 
@@ -170,10 +218,15 @@ export async function renderMachines(el) {
     const h = await getMachineHistory(m.id);
     if (h.length) last.set(m.id, h[h.length - 1].date);
   }));
-  S = { root, machines, last, photo: '' };
+  S = { root, machines, last, photo: '', rtab: 'upper' };
+  await loadRoutines();
   render();
 
   root.addEventListener('click', async (e) => {
+    const rt = e.target.closest('[data-rtab]');
+    if (rt) { S.rtab = rt.dataset.rtab; render(); return; }
+    const rb = e.target.closest('[data-r]');
+    if (rb && !rb.disabled) { await onRoutine(rb); return; }
     const dlg = root.querySelector('#editor');
     if (e.target === dlg) { dlg.close(); return; }
     if (e.target.closest('[data-add]')) return openEditor(null);

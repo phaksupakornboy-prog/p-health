@@ -42,7 +42,8 @@ function parseHistory(raw, cast) {
 const castTemplate = (v) => String(v).split(',');
 const serialise = (hist) => hist.map((h) => `${h.from}=${Array.isArray(h.value) ? h.value.join(',') : h.value}`).join('|');
 
-const DEFAULT_SETTINGS = { runGoalKm: 15, weightsGoal: 4, defaultSets: 3, defaultReps: 12, weightStepKg: 2.5, targetWeightKg: null, weekTemplate: DEFAULT_TEMPLATE };
+// routineUpper/Lower: machine ids in the order you do them; null means every machine of that group.
+const DEFAULT_SETTINGS = { runGoalKm: 15, weightsGoal: 4, defaultSets: 3, defaultReps: 12, weightStepKg: 2.5, targetWeightKg: null, weekTemplate: DEFAULT_TEMPLATE, restSeconds: 90, routineUpper: null, routineLower: null, language: 'en' };
 
 const CATALOG = [
   ['m01', 'Chest Press', 'upper', 'chest-press', 35],
@@ -148,6 +149,9 @@ function fromSheets(data) {
       defaultSets: n(st.default_sets) ?? 3, defaultReps: n(st.default_reps) ?? 12,
       weightStepKg: n(st.weight_step_kg) ?? 2.5, targetWeightKg: n(st.target_weight_kg),
       weekTemplate: DEFAULT_TEMPLATE,
+      restSeconds: n(st.rest_seconds) ?? 90,
+      routineUpper: st.routine_upper ? String(st.routine_upper).split(',').filter(Boolean) : null,
+      routineLower: st.routine_lower ? String(st.routine_lower).split(',').filter(Boolean) : null,
       history: {
         weekTemplate: parseHistory(st.week_template, castTemplate),
         runGoalKm: parseHistory(st.run_goal_km, Number),
@@ -328,7 +332,7 @@ export async function setWeekGoal(weekStartIso, { runGoalKm, weightsGoal }) {
   remote('saveWeek', { week_start: weekStartIso, run_goal_km: runGoalKm, weights_goal: weightsGoal });
 }
 
-const SETTING_KEYS = { runGoalKm: 'run_goal_km', weightsGoal: 'weights_goal', defaultSets: 'default_sets', defaultReps: 'default_reps', weightStepKg: 'weight_step_kg', targetWeightKg: 'target_weight_kg', weekTemplate: 'week_template' };
+const SETTING_KEYS = { runGoalKm: 'run_goal_km', weightsGoal: 'weights_goal', defaultSets: 'default_sets', defaultReps: 'default_reps', weightStepKg: 'weight_step_kg', targetWeightKg: 'target_weight_kg', weekTemplate: 'week_template', restSeconds: 'rest_seconds', routineUpper: 'routine_upper', routineLower: 'routine_lower' };
 export async function saveSettings(patch) {
   const d = load();
   const from = iso(weekStart(today()));
@@ -346,7 +350,7 @@ export async function saveSettings(patch) {
   persist();
   for (const [k, v] of Object.entries(patch)) {
     if (!SETTING_KEYS[k]) continue;
-    const value = HISTORY_KEYS.includes(k) ? serialise(d.settings.history[k]) : (v ?? '');
+    const value = HISTORY_KEYS.includes(k) ? serialise(d.settings.history[k]) : Array.isArray(v) ? v.join(',') : (v ?? '');
     remote('saveSetting', { key: SETTING_KEYS[k], value });
   }
 }
@@ -489,4 +493,16 @@ export async function getMachineHistory(machineId) {
 }
 export async function getWorkouts() {
   return [...load().workouts].sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
+// Machines of one group in routine order: [routine..., the rest of the group...].
+export async function getRoutine(group) {
+  const d = load();
+  const active = d.machines.filter((m) => m.active && m.group === group);
+  const ids = d.settings[group === 'upper' ? 'routineUpper' : 'routineLower'];
+  const order = ids ? ids.filter((id) => active.some((m) => m.id === id)) : active.map((m) => m.id);
+  return { routine: order, others: active.map((m) => m.id).filter((id) => !order.includes(id)) };
+}
+export async function setRoutine(group, ids) {
+  await saveSettings({ [group === 'upper' ? 'routineUpper' : 'routineLower']: ids });
 }

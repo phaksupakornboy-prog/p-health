@@ -1,4 +1,4 @@
-import { setLocale, t } from './i18n.js';
+import { setLocale, savedLocale, t } from './i18n.js';
 import { icon } from './icons.js';
 import { renderHome } from './screens/home.js';
 import { renderLog } from './screens/log.js';
@@ -8,6 +8,7 @@ import { renderAnalytics } from './screens/analytics.js';
 import { renderMachines } from './screens/machines.js';
 import { renderSettings } from './screens/settings.js';
 import { renderPlan } from './screens/plan.js';
+import { renderSummary } from './screens/summary.js';
 import { init } from './store.js';
 import { toast } from './ui.js';
 
@@ -23,6 +24,7 @@ const SUB = {
   '/log/body': { key: 'log', render: renderBody },
   '/settings': { key: 'home', render: renderSettings },
   '/plan': { key: 'home', render: renderPlan },
+  '/summary': { key: 'analytics', render: renderSummary },
 };
 
 const main = document.getElementById('main');
@@ -45,7 +47,7 @@ async function route() {
   window.scrollTo(0, 0);
 }
 
-await setLocale('en');
+await setLocale(savedLocale());
 const boot = await init();
 if (boot.mode === 'sheets' && !boot.fresh && !boot.cached) toast(t('settings.loadError'));
 // Fresh rows from the sheet arrived after a start from the phone's copy: redraw read-only

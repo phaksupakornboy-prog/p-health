@@ -102,7 +102,12 @@
     "finishEmpty": "Mark at least one set done to finish.",
     "saved": "Saved {machines}, {sets}. Time for {km} km.",
     "savedWithPr": "New best on {name}: {kg} kg. {saved}",
-    "savedNoRun": "Saved {machines}, {sets}."
+    "savedNoRun": "Saved {machines}, {sets}.",
+    "rest": "Rest",
+    "restMore": "Add 15 seconds of rest",
+    "restSkip": "Skip",
+    "restOver": "Rest over. Next set.",
+    "otherMachines": "Other {group} machines"
   },
   "picker": {
     "title": "Add a machine",
@@ -248,7 +253,8 @@
     "newBestKey": "New best",
     "weekdays": "Mon Tue Wed Thu Fri Sat Sun",
     "weekResults": "Week by week",
-    "inProgress": "This week, in progress"
+    "inProgress": "This week, in progress",
+    "upcoming": "Not started yet"
   },
   "machinesScreen": {
     "title": "Machines",
@@ -317,7 +323,10 @@
     "step": "Weight step (kg)",
     "target": "Target weight (kg)",
     "saveWeek": "Save usual week and goals",
-    "weekSaved": "Usual week and goals saved."
+    "weekSaved": "Usual week and goals saved.",
+    "rest": "Rest between sets (seconds)",
+    "restHint": "0 turns the rest timer off.",
+    "language": "Language"
   },
   "plan": {
     "title": "Plan",
@@ -367,5 +376,51 @@
     "resultMet": "Goal met",
     "resultOver": "Goal met, +{km} km",
     "weekDone": "Ran {km} of {goal} km · {n} of {g} weights"
+  },
+  "routine": {
+    "title": "Routine order",
+    "hint": "The weights log opens on the first machine and lists the rest in this order.",
+    "group": "Routine for",
+    "up": "Move {name} up",
+    "down": "Move {name} down",
+    "out": "Take {name} out of the routine",
+    "notIn": "Not in the routine",
+    "empty": "No machines in this routine yet. Add some below."
+  },
+  "summary": {
+    "open": "Trainer summary",
+    "title": "Summary",
+    "back": "Back to analytics",
+    "span": "Summary period",
+    "week": "Week",
+    "month": "Month",
+    "prev": "Previous period",
+    "next": "Next period",
+    "training": "Plan kept",
+    "kept": "{n} of {of} days went as planned",
+    "weights": "Weights",
+    "runs": "Runs",
+    "km": "Kilometres",
+    "ofPlanned": "{n} of {of} planned",
+    "running": "Running, week by week",
+    "avgPace": "average pace",
+    "paceLine": "Average pace {avg} /km · best {best} /km on {date}",
+    "body": "Body weight",
+    "weighIns_one": "{count} weigh-in",
+    "weighIns_other": "{count} weigh-ins",
+    "waist": "waist {from} → {to} cm",
+    "noBody": "No weigh-ins in this period.",
+    "strength": "Strength",
+    "sessions_one": "{count} session",
+    "sessions_other": "{count} sessions",
+    "newBestFrom": "New best, was {kg} kg",
+    "was": "was {kg} kg",
+    "noStrength": "No weight sessions in this period.",
+    "notes": "Notes",
+    "share": "Share with trainer",
+    "copy": "Copy text",
+    "print": "Print or PDF",
+    "copied": "Summary copied. Paste it into your chat with the trainer.",
+    "copyFailed": "Could not copy. Use Share or Print instead."
   }
 }

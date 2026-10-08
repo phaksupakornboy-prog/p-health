@@ -4,6 +4,17 @@
 let dict = {};
 let locale = 'en';
 
+// The language is a per-phone choice, so it lives on the device, not in the sheet.
+const LANG_KEY = 'phealth.lang';
+export function savedLocale() {
+  try { const v = localStorage.getItem(LANG_KEY); if (v === 'th' || v === 'en') return v; } catch { /* storage blocked */ }
+  return 'en';
+}
+export function chooseLocale(next) {
+  try { localStorage.setItem(LANG_KEY, next); } catch { /* storage blocked */ }
+}
+export const currentLocale = () => locale;
+
 export async function setLocale(next) {
   const res = await fetch(`i18n/${next}.json`);
   dict = await res.json();

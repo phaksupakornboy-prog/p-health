@@ -3,7 +3,7 @@ import { icon } from '../icons.js';
 import { toast, esc, fieldError } from '../ui.js';
 import { connection, setConnection, fetchAll, pendingCount, flush, onSync } from '../remote.js';
 import { dataMode, getSettings, saveSettings, parseSlot, slotOf, weekStart, today, addDays } from '../store.js';
-import { dateFmt, num } from '../i18n.js';
+import { dateFmt, num, chooseLocale, currentLocale } from '../i18n.js';
 import { parseNum } from '../ui.js';
 
 function status() {
@@ -39,6 +39,7 @@ function weekCard(st) {
       <label class="field"><span class="label">${t('settings.reps')}</span><input name="reps" inputmode="numeric" value="${st.defaultReps}"></label>
       <label class="field"><span class="label">${t('settings.step')}</span><input name="step" inputmode="decimal" value="${num(st.weightStepKg)}"></label>
       <label class="field"><span class="label">${t('settings.target')}</span><input name="target" inputmode="decimal" value="${st.targetWeightKg ?? ''}"></label>
+      <label class="field"><span class="label">${t('settings.rest')}</span><input name="rest" inputmode="numeric" value="${st.restSeconds}" aria-describedby="rest-hint"><span class="meta" id="rest-hint">${t('settings.restHint')}</span></label>
     </div>
     <button type="submit" class="btn btn-primary btn-block">${t('settings.saveWeek')}</button>
   </form>`;
@@ -53,6 +54,12 @@ export async function renderSettings(el) {
       <a class="btn-round" href="#/" aria-label="${t('settings.back')}">${icon('chevronLeft')}</a>
       <div class="top-title"><h1 class="title">${t('settings.title')}</h1></div>
     </header>
+  <section class="card" aria-labelledby="s-lang">
+    <h2 id="s-lang" class="label">${icon('globe')}${t('settings.language')}</h2>
+    <div class="segmented" role="radiogroup" aria-labelledby="s-lang">
+      ${[['en', 'English'], ['th', 'ไทย']].map(([v, name]) => `<button type="button" role="radio" class="seg" data-lang="${v}" lang="${v}" aria-checked="${currentLocale() === v}" tabindex="${currentLocale() === v ? 0 : -1}">${name}</button>`).join('')}
+    </div>
+  </section>
   <form class="conn-form" novalidate>
 
     <section class="card" aria-labelledby="s-sheets">
@@ -76,6 +83,12 @@ export async function renderSettings(el) {
   ${weekCard(st)}
   </div>`;
 
+  el.querySelector('[aria-labelledby="s-lang"] .segmented').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-lang]');
+    if (!b || b.dataset.lang === currentLocale()) return;
+    chooseLocale(b.dataset.lang);
+    location.reload();
+  });
   const wf = el.querySelector('.week-form');
   wf.addEventListener('click', (e) => {
     const sw = e.target.closest('[data-tpl-run]');
@@ -95,6 +108,7 @@ export async function renderSettings(el) {
       runGoalKm: pos(f.runGoal.value, st.runGoalKm), weightsGoal: Math.round(pos(f.weightsGoal.value, st.weightsGoal)),
       defaultSets: Math.round(pos(f.sets.value, st.defaultSets)), defaultReps: Math.round(pos(f.reps.value, st.defaultReps)),
       weightStepKg: pos(f.step.value, st.weightStepKg), targetWeightKg: target > 0 ? target : null,
+      restSeconds: Math.max(0, Math.round(parseNum(f.rest.value) || 0)),
     });
     toast(t('settings.weekSaved'));
   });

@@ -106,6 +106,7 @@ export async function renderAnalytics(el) {
   <div class="screen analytics">
     <header class="top">
       <h1 class="title-lg">${t('analytics.title')}</h1>
+      <a class="btn btn-outline btn-compact" href="#/summary">${icon('share')}<span>${t('summary.open')}</span></a>
     </header>
     <div class="segmented seg-3" role="radiogroup" aria-label="${t('analytics.range')}">${rangeBtns}</div>
 

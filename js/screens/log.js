@@ -3,7 +3,7 @@ import { icon } from '../icons.js';
 import { go, toast, esc, logHeader } from '../ui.js';
 import {
   activeDate, iso, addDays, fromIso, planFor, getWeek, getSettings, getMachines, getLastSession, getDraft, saveDraft,
-  saveWorkout, addMachine, getWorkoutEntries,
+  saveWorkout, addMachine, getWorkoutEntries, getRoutine,
 } from '../store.js';
 
 let S; // screen state: { draft, settings, machines, last: Map, root, error }
@@ -37,10 +37,71 @@ function open(id) {
   S.draft.current = id;
 }
 
+// Started machines first, then the routine in its order, then the rest of the group.
 function sessionOrder() {
-  const inGroup = S.machines.filter((m) => m.group === S.draft.type).map((m) => m.id);
+  const r = S.routines[S.draft.type];
   const started = S.draft.entries.map((e) => e.machineId);
-  return [...started, ...inGroup.filter((id) => !started.includes(id))];
+  return [...started, ...r.routine.filter((id) => !started.includes(id)), ...r.others.filter((id) => !started.includes(id))];
+}
+const inRoutine = (id) => S.routines[S.draft.type].routine.includes(id);
+
+// ---- rest timer: starts when a set is ticked, lives outside the re-rendered screen
+let restEnd = 0;
+let restTick = null;
+function restEl() {
+  let el = document.getElementById('rest-timer');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'rest-timer';
+    el.className = 'rest';
+    el.hidden = true;
+    el.innerHTML = `${icon('timer')}<p class="rest-text"><span class="label">${t('log.rest')}</span><span class="rest-time" aria-hidden="true"></span></p>
+      <p class="sr-only" aria-live="assertive" id="rest-live"></p>
+      <button type="button" class="btn-round" data-rest="15" aria-label="${t('log.restMore')}">${icon('plus')}</button>
+      <button type="button" class="btn btn-outline btn-compact" data-rest="skip">${t('log.restSkip')}</button>`;
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-rest]');
+      if (!b) return;
+      if (b.dataset.rest === 'skip') stopRest();
+      else restEnd += 15000;
+      paintRest();
+    });
+    document.body.append(el);
+    window.addEventListener('hashchange', () => { if (!location.hash.startsWith('#/log')) stopRest(); });
+  }
+  return el;
+}
+function startRest() {
+  const secs = S.settings.restSeconds || 0;
+  if (!secs) return;
+  restEnd = Date.now() + secs * 1000;
+  const el = restEl();
+  el.hidden = false;
+  document.documentElement.classList.add('is-resting');
+  el.classList.remove('is-over');
+  clearInterval(restTick);
+  restTick = setInterval(paintRest, 250);
+  paintRest();
+}
+function stopRest() {
+  clearInterval(restTick);
+  restEnd = 0;
+  const el = document.getElementById('rest-timer');
+  if (el) el.hidden = true;
+  document.documentElement.classList.remove('is-resting');
+}
+function paintRest() {
+  const el = restEl();
+  const left = Math.max(0, Math.ceil((restEnd - Date.now()) / 1000));
+  el.querySelector('.rest-time').textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+  if (left === 0 && !el.classList.contains('is-over')) {
+    el.classList.add('is-over');
+    el.querySelector('#rest-live').textContent = t('log.restOver');
+    el.querySelector('.label').textContent = t('log.restOver');
+    try { navigator.vibrate?.([200, 100, 200]); } catch { /* not supported */ }
+    clearInterval(restTick);
+    setTimeout(() => { if (el.classList.contains('is-over')) { el.hidden = true; document.documentElement.classList.remove('is-resting'); el.querySelector('.label').textContent = t('log.rest'); } }, 6000);
+  }
 }
 
 function commit() {
@@ -82,6 +143,7 @@ function render() {
       <button class="done-toggle cat-${cat}" data-act="done" data-i="${i}" data-fid="done-${i}" aria-pressed="${s.done}" aria-label="${s.done ? t('log.markUndone', { n: i + 1 }) : t('log.markDone', { n: i + 1 })}">${icon('check')}</button>
     </li>`).join('');
 
+  let othersLabelDone = false;
   const list = sessionOrder().filter((id) => id !== d.current).map((id) => {
     const mm = machine(id);
     const e = entry(id);
@@ -90,7 +152,10 @@ function render() {
     const status = isCur ? `<span class="chip chip-now">${t('log.current')}</span>`
       : doneSets.length ? `<span class="chip chip-good">${icon('check')}<span>${t('log.done')}</span></span>` : '';
     const sub = doneSets.length ? t('log.doneSummary', { sets: tc('home.sets', doneSets.length), kg: fmtKg(Math.max(...doneSets.map((s) => s.weightKg))) }) : lastLine(id);
-    return `<li><button class="machine-row" data-act="open" data-id="${id}" data-fid="open-${id}" ${isCur ? 'aria-current="true"' : ''}>
+    // a divider before machines that are not in the routine (once, and only after routine ones)
+    const divider = !inRoutine(id) && !e && !othersLabelDone && S.routines[d.type].routine.length
+      ? ((othersLabelDone = true), `<li class="list-divider label">${t('log.otherMachines', { group: t(`category.${d.type}`) })}</li>`) : '';
+    return `${divider}<li><button class="machine-row" data-act="open" data-id="${id}" data-fid="open-${id}" ${isCur ? 'aria-current="true"' : ''}>
       ${mm.group !== d.type ? `<span class="dot dot-${mm.group}" aria-hidden="true"></span>` : ''}
       <span class="machine-row-text"><span class="machine-row-name">${esc(mm.name)}</span><span class="meta">${esc(sub)}</span></span>
       ${status}${isCur ? '' : icon('chevronRight', 'chev')}
@@ -233,6 +298,7 @@ async function onClick(ev) {
         S.error = '';
         const next = e.sets.findIndex((s, j) => j > i && !s.done);
         if (next !== -1) { e.active = next; S.reveal = next; }
+        startRest();
       }
       break;
     }
@@ -331,8 +397,12 @@ export async function renderLog(el) {
 
   const root = document.createElement('div');
   el.replaceChildren(root);
-  S = { draft, settings, machines, last, root, error: '' };
-  if (!draft.current) open((machines.find((m) => m.group === draft.type) || machines[0]).id);
+  const routines = { upper: await getRoutine('upper'), lower: await getRoutine('lower') };
+  S = { draft, settings, machines, last, root, error: '', routines };
+  if (!draft.current) {
+    const r = routines[draft.type];
+    open(r.routine[0] || r.others[0] || machines[0].id);
+  }
 
   root.addEventListener('click', onClick);
   root.addEventListener('change', onChange);
