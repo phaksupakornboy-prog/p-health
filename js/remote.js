@@ -14,7 +14,7 @@ export function pendingCount() { return read(QUEUE, []).length; }
 
 // Apps Script can take many seconds on a cold start, and a write often finishes in the
 // sheet before its reply arrives. Reads give up sooner than writes.
-const READ_TIMEOUT_MS = 30000;
+const READ_TIMEOUT_MS = 60000;
 const WRITE_TIMEOUT_MS = 60000;
 const RETRY_MS = 30000;
 
